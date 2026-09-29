@@ -22,16 +22,10 @@ Start the Spring Boot application:
 ```bash
 ./mvnw spring-boot:run
 
-```markdown
-# Split the Bill API
-
 A simple API for creating receipts, adding items, and assigning items to friends.
 
 The application runs at:
-
-```text
 http://localhost:8080
-```
 
 ## Endpoints
 
@@ -116,4 +110,3 @@ curl -X DELETE \
 ```
 
 Data is currently stored in memory, so it will be lost when the application restarts.
-```
