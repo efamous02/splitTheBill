@@ -1,0 +1,223 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Receipts</title>
+<style>
+  :root {
+    --bg: #dfe6ec; --paper: #fff; --ink: #1d2730; --muted: #6b7885;
+    --line: #cfd8e0; --accent: #1f6f8b; --danger: #b3382c; --chip: #e3f0f4;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #131a20; --paper: #1c252d; --ink: #e8eef3; --muted: #8b99a6;
+            --line: #33414d; --accent: #5cb8d6; --danger: #ef8478; --chip: #22404b; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 var(--sans); padding: 24px 12px 64px; }
+  main { max-width: 640px; margin: 0 auto; }
+  h1 { font-size: 1.25rem; margin: 0 0 16px; font-weight: 650; }
+  .paper { background: var(--paper); border-radius: 4px 4px 0 0; padding: 20px; box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+  .tear { height: 12px; background: linear-gradient(-45deg, transparent 8px, var(--paper) 0) 0 0/16px 12px,
+                                   linear-gradient(45deg, transparent 8px, var(--paper) 0) 0 0/16px 12px; }
+  .start { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 20px; }
+  .open { display: flex; gap: 8px; margin-left: auto; }
+  .open input { width: 110px; }
+  label { display: block; font-size: .8rem; color: var(--muted); margin-bottom: 2px; }
+  input { font: inherit; color: inherit; background: transparent; border: 1px solid var(--line);
+          border-radius: 4px; padding: 7px 9px; min-width: 0; width: 100%; }
+  input:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  button { font: inherit; cursor: pointer; border-radius: 4px; padding: 7px 12px; border: 1px solid var(--accent);
+           background: var(--accent); color: #fff; white-space: nowrap; }
+  @media (prefers-color-scheme: dark) { button { color: #0e1519; } }
+  button.ghost { background: transparent; color: var(--accent); }
+  button.icon { border: 0; background: transparent; color: var(--muted); padding: 4px 8px; font-size: 1.1rem; line-height: 1; }
+  button.icon:hover { color: var(--danger); }
+  .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .add { display: grid; grid-template-columns: 1fr 70px 100px auto; gap: 8px; align-items: end;
+         padding-bottom: 20px; border-bottom: 1px dashed var(--line); }
+  .item { padding: 14px 0; border-bottom: 1px dashed var(--line); }
+  .row { display: flex; align-items: center; gap: 10px; }
+  .name { flex: 1; font-weight: 550; overflow-wrap: anywhere; }
+  .qty { display: flex; align-items: center; gap: 2px; }
+  .qty button { padding: 0 8px; }
+  .price { min-width: 76px; text-align: right; }
+  .assign { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+  .assign input { max-width: 180px; padding: 4px 8px; font-size: .9rem; }
+  .assign button { padding: 4px 10px; font-size: .9rem; }
+  .chip { background: var(--chip); color: var(--accent); border-radius: 99px; padding: 1px 4px 1px 10px; font-size: .85rem; display: inline-flex; align-items: center; }
+  .chip button { padding: 0 6px; color: var(--accent); }
+  .totals { padding-top: 16px; }
+  .totals div { display: flex; justify-content: space-between; padding: 2px 0; }
+  .totals .grand { font-weight: 650; border-top: 1px solid var(--ink); margin-top: 6px; padding-top: 6px; }
+  .muted { color: var(--muted); }
+  .empty { padding: 28px 0 8px; text-align: center; color: var(--muted); }
+  #msg { min-height: 1.4em; margin: 8px 0 0; color: var(--danger); font-size: .9rem; }
+  @media (max-width: 520px) { .add { grid-template-columns: 1fr 1fr; } .add .n { grid-column: 1 / -1; } .add button { grid-column: 1 / -1; } }
+</style>
+</head>
+<body>
+<main>
+  <h1>Receipts</h1>
+  <div class="paper">
+    <div class="start">
+      <button type="button" id="newBtn">New receipt</button>
+      <span class="muted">or open an existing one</span>
+      <form class="open" id="openForm">
+        <input id="rid" type="number" min="1" required placeholder="Receipt #" aria-label="Receipt number">
+        <button type="submit" class="ghost">Open</button>
+      </form>
+    </div>
+ 
+    <div id="body" hidden>
+      <form class="add" id="addForm">
+        <div class="n"><label for="iname">Item</label><input id="iname" required placeholder="Pizza"></div>
+        <div><label for="iqty">Qty</label><input id="iqty" type="number" min="1" value="1" required></div>
+        <div><label for="iprice">Price</label><input id="iprice" type="number" min="0" step="0.01" required placeholder="0.00"></div>
+        <button type="submit">Add item</button>
+      </form>
+      <div id="items"></div>
+      <div class="totals" id="totals"></div>
+    </div>
+    <p id="msg" role="alert"></p>
+  </div>
+  <div class="tear"></div>
+</main>
+<datalist id="people"></datalist>
+ 
+<script>
+const $ = id => document.getElementById(id);
+const money = n => "$" + Number(n).toFixed(2);   // change "$" for your currency
+let rid = null, receipt = { lineItems: [] };
+ 
+async function api(method, path, body) {
+  const res = await fetch(`/api/receipts/${rid}${path}`, {
+    method,
+    headers: body ? { "Content-Type": "application/json" } : {},
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if (!res.ok && !(method === "GET" && res.status === 404)) {
+    const detail = (await res.text()).slice(0, 200);
+    throw new Error(`${method} ${path || "/"} failed (${res.status}) ${detail}`);
+  }
+  return res;
+}
+ 
+async function load() {
+  $("msg").textContent = "";
+  try {
+    const res = await api("GET", "");
+    receipt = res.status === 404 ? { id: rid, lineItems: [] } : await res.json();
+  } catch (e) { $("msg").textContent = e.message; return; }
+  render();
+}
+ 
+async function act(fn) {
+  try { await fn(); await load(); }
+  catch (e) { $("msg").textContent = e.message; }
+}
+ 
+function render() {
+  $("body").hidden = false;
+  const items = receipt.lineItems || [];
+  const names = [...new Set(items.map(i => i.personAssignedTo).filter(Boolean))];
+  $("people").innerHTML = names.map(n => `<option value="${esc(n)}">`).join("");
+ 
+  $("items").innerHTML = items.length ? items.map(i => `
+    <div class="item" data-id="${i.id}">
+      <div class="row">
+        <span class="name">${esc(i.name)}</span>
+        <span class="qty num">
+          <button class="icon" data-a="dec" aria-label="Decrease quantity" ${i.quantity <= 1 ? "disabled" : ""}>−</button>
+          ${i.quantity}
+          <button class="icon" data-a="inc" aria-label="Increase quantity">+</button>
+        </span>
+        <span class="price num">${money(i.quantity * i.unitPrice)}</span>
+        <button class="icon" data-a="del" aria-label="Delete ${esc(i.name)}">✕</button>
+      </div>
+      <div class="assign">
+        ${i.personAssignedTo
+          ? `<span class="chip">${esc(i.personAssignedTo)}<button class="icon" data-a="unassign" aria-label="Remove assignment">✕</button></span>`
+          : `<span class="muted">Unassigned</span>`}
+        <input list="people" placeholder="Assign to…" aria-label="Person to assign">
+        <button class="ghost" data-a="assign">Assign</button>
+      </div>
+    </div>`).join("")
+    : `<div class="empty">Receipt #${rid} is empty.<br>Add its first item above and the receipt is saved automatically.</div>`;
+ 
+  const total = items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+  const by = {};
+  items.forEach(i => { const k = i.personAssignedTo || "Unassigned"; by[k] = (by[k] || 0) + i.quantity * i.unitPrice; });
+  $("totals").innerHTML = items.length
+    ? Object.entries(by).map(([k, v]) => `<div class="muted"><span>${esc(k)}</span><span class="num">${money(v)}</span></div>`).join("")
+      + `<div class="grand"><span>Total</span><span class="num">${money(total)}</span></div>` : "";
+}
+ 
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+ 
+function open(id) { rid = String(id); $("rid").value = rid; location.hash = rid; load(); }
+ 
+$("openForm").addEventListener("submit", e => { e.preventDefault(); open($("rid").value); });
+ 
+// New receipt: use the first number that has no items yet
+$("newBtn").addEventListener("click", async () => {
+  $("msg").textContent = "";
+  for (let n = 1; n <= 500; n++) {
+    let free = true;
+    try {
+      const r = await fetch(`/api/receipts/${n}`);
+      if (r.ok) free = !(((await r.json()).lineItems || []).length);
+    } catch (e) { $("msg").textContent = "Could not reach the server."; return; }
+    if (free) { open(n); return; }
+  }
+  $("msg").textContent = "Couldn't find an unused receipt number.";
+});
+ 
+$("addForm").addEventListener("submit", e => {
+  e.preventDefault();
+  act(async () => {
+    const nextId = Math.max(0, ...receipt.lineItems.map(i => i.id)) + 1;
+    await api("POST", "/items", {
+      id: nextId,
+      name: $("iname").value.trim(),
+      quantity: Number($("iqty").value),
+      unitPrice: Number($("iprice").value),
+      personAssignedTo: null
+    });
+    $("addForm").reset(); $("iqty").value = 1; $("iname").focus();
+  });
+});
+ 
+$("items").addEventListener("click", e => {
+  const btn = e.target.closest("button[data-a]");
+  if (!btn) return;
+  const el = btn.closest(".item"), id = el.dataset.id;
+  const item = receipt.lineItems.find(i => String(i.id) === id);
+  const a = btn.dataset.a;
+  if (a === "del") act(() => api("DELETE", `/items/${id}`));
+  if (a === "inc") act(() => api("PATCH", `/items/${id}`, { quantity: item.quantity + 1 }));
+  if (a === "dec") act(() => api("PATCH", `/items/${id}`, { quantity: item.quantity - 1 }));
+  if (a === "unassign") act(() => api("DELETE", `/items/${id}/assignment`));
+  if (a === "assign") assign(el, id);
+});
+ 
+$("items").addEventListener("keydown", e => {
+  if (e.key === "Enter" && e.target.matches(".assign input")) {
+    const el = e.target.closest(".item"); assign(el, el.dataset.id);
+  }
+});
+ 
+function assign(el, id) {
+  const person = el.querySelector(".assign input").value.trim();
+  if (!person) return;
+  act(() => api("PUT", `/items/${id}/assignment`, { personAssignedTo: person }));
+}
+ 
+if (location.hash.length > 1) { rid = location.hash.slice(1); $("rid").value = rid; load(); }
+</script>
+</body>
+</html>
+ 
