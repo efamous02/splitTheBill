@@ -4,6 +4,8 @@ A small Spring Boot API for splitting a bill among friends.
 
 The application stores receipts and line items in memory. A receipt contains one or more line items, and each line item can be assigned to a person.
 
+This README was generated using AI
+
 ## Features
 
 - Retrieve a receipt
