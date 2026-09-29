@@ -3,6 +3,7 @@ package com.example.splitTheBill;
 import java.math.BigDecimal;
 
 public class LineItem {
+    private long id;
 	private String name;
 	private int quantity;
 	private BigDecimal unitPrice;
@@ -15,6 +16,7 @@ public class LineItem {
         this.name = name;
         this.quantity = quantity;
         this.unitPrice = unitPrice;
+        this.id = -1; // id will be set when the LineItem is saved to the database
     }
 
 	public LineItem(String name, int quantity, BigDecimal unitPrice, String personAssignedTo) {
@@ -22,6 +24,7 @@ public class LineItem {
 		this.quantity = quantity;
 		this.unitPrice = unitPrice;
 		this.personAssignedTo = personAssignedTo;
+		this.id = -1; // id will be set when the LineItem is saved to the database
 	}
 
 	public String getName() {
@@ -55,4 +58,12 @@ public class LineItem {
     public void setPersonAssignedTo(String personAssignedTo) {
         this.personAssignedTo = personAssignedTo;
     }
+
+    public Long getId() {
+        return id;
+    }
+
+	public void setId(long id) {
+		this.id = id;
+	}
 }
