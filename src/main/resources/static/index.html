@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -20,12 +19,10 @@
   body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 var(--sans); padding: 24px 12px 64px; }
   main { max-width: 640px; margin: 0 auto; }
   h1 { font-size: 1.25rem; margin: 0 0 16px; font-weight: 650; }
-  .paper { background: var(--paper); border-radius: 4px 4px 0 0; padding: 20px; box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+  .paper { background: var(--paper); border-radius: 0; padding: 20px; border-top: 3px double var(--rule); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
   .tear { height: 12px; background: linear-gradient(-45deg, transparent 8px, var(--paper) 0) 0 0/16px 12px,
                                    linear-gradient(45deg, transparent 8px, var(--paper) 0) 0 0/16px 12px; }
   .start { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 20px; }
-  .open { display: flex; gap: 8px; margin-left: auto; }
-  .open input { width: 110px; }
   label { display: block; font-size: .8rem; color: var(--muted); margin-bottom: 2px; }
   input { font: inherit; color: inherit; background: transparent; border: 1px solid var(--line);
           border-radius: 4px; padding: 7px 9px; min-width: 0; width: 100%; }
@@ -57,20 +54,47 @@
   .empty { padding: 28px 0 8px; text-align: center; color: var(--muted); }
   #msg { min-height: 1.4em; margin: 8px 0 0; color: var(--danger); font-size: .9rem; }
   @media (max-width: 520px) { .add { grid-template-columns: 1fr 1fr; } .add .n { grid-column: 1 / -1; } .add button { grid-column: 1 / -1; } }
+
+  /* ---- Legal-pad top: dark leatherette backing with stitching ---- */
+  :root { --pad: #3a281d; --pad-edge: #1e130c; --pad-ink: #f4eadc; --pad-muted: #c9b8a4; --rule: #c9473a; }
+  @media (prefers-color-scheme: dark) { :root { --pad: #2b1d14; --pad-edge: #120a05; --rule: #d9645a; } }
+  .padtop { position: relative; background: var(--pad); color: var(--pad-ink); border-radius: 8px 8px 0 0;
+            padding: 24px 20px 18px; border-bottom: 3px solid var(--pad-edge);
+            box-shadow: 0 2px 6px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.12); }
+  .padtop::before { content: ""; position: absolute; inset: 8px 10px auto 10px; height: 0;
+                    border-top: 1.5px dashed rgba(244,234,220,.35); }
+  .padtop .start { margin-bottom: 0; }
+  .padtop .muted { color: var(--pad-muted); }
+  .padtop input { border-color: rgba(244,234,220,.4); background: rgba(0,0,0,.2); color: var(--pad-ink); }
+  .padtop input::placeholder { color: var(--pad-muted); opacity: .8; }
+  .padtop button { background: var(--pad-ink); border-color: var(--pad-ink); color: var(--pad); font-weight: 600; }
+  .padtop button.ghost { background: transparent; color: var(--pad-ink); border-color: var(--pad-ink); }
+  .padtop :focus-visible { outline-color: var(--pad-ink); }
+
+  /* ---- Existing receipts list ---- */
+  .list-title { margin: 0 0 4px; font-size: 1rem; font-weight: 650; }
+  .rcpt { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; background: transparent;
+          color: var(--ink); border: 0; border-bottom: 1px dashed var(--line); border-radius: 0; padding: 14px 4px; }
+  .rcpt:hover { background: var(--chip); }
+  .rcpt .id { flex: 1; font-weight: 550; }
+  .rcpt .meta { color: var(--muted); font-size: .9rem; }
+  .rcpt .amt { min-width: 76px; text-align: right; }
 </style>
 </head>
 <body>
 <main>
   <h1>Receipts</h1>
-  <div class="paper">
+  <div class="padtop">
     <div class="start">
-      <button type="button" id="newBtn">New receipt</button>
-      <span class="muted">or open an existing one</span>
-      <form class="open" id="openForm">
-        <input id="rid" type="number" min="1" required placeholder="Receipt #" aria-label="Receipt number">
-        <button type="submit" class="ghost">Open</button>
-      </form>
-    </div>
+        <button type="button" id="newBtn">New receipt</button>
+        <button type="button" class="ghost" id="listBtn">Existing receipts</button>
+      </div>
+  </div>
+  <div class="paper">
+
+ 
+    <div id="list" hidden></div>
+
  
     <div id="body" hidden>
       <form class="add" id="addForm">
@@ -121,9 +145,9 @@ async function act(fn) {
 }
  
 function render() {
-  $("body").hidden = false;
+  $("body").hidden = false; $("list").hidden = true;
   const items = receipt.lineItems || [];
-  const names = [...new Set(items.map(i => i.personAssignedTo).filter(Boolean))];
+  const names = [...new Set(items.flatMap(people))];
   $("people").innerHTML = names.map(n => `<option value="${esc(n)}">`).join("");
  
   $("items").innerHTML = items.length ? items.map(i => `
@@ -139,8 +163,8 @@ function render() {
         <button class="icon" data-a="del" aria-label="Delete ${esc(i.name)}">✕</button>
       </div>
       <div class="assign">
-        ${i.personAssignedTo
-          ? `<span class="chip">${esc(i.personAssignedTo)}<button class="icon" data-a="unassign" aria-label="Remove assignment">✕</button></span>`
+        ${people(i).length
+          ? people(i).map(p => `<span class="chip">${esc(p)}<button class="icon" data-a="unassign" data-person="${esc(p)}" aria-label="Remove ${esc(p)}">✕</button></span>`).join("")
           : `<span class="muted">Unassigned</span>`}
         <input list="people" placeholder="Assign to…" aria-label="Person to assign">
         <button class="ghost" data-a="assign">Assign</button>
@@ -150,17 +174,47 @@ function render() {
  
   const total = items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
   const by = {};
-  items.forEach(i => { const k = i.personAssignedTo || "Unassigned"; by[k] = (by[k] || 0) + i.quantity * i.unitPrice; });
+  items.forEach(i => {
+    const ppl = people(i), cost = i.quantity * i.unitPrice;
+    (ppl.length ? ppl : ["Unassigned"]).forEach(k => { by[k] = (by[k] || 0) + cost / Math.max(ppl.length, 1); });
+  });
   $("totals").innerHTML = items.length
     ? Object.entries(by).map(([k, v]) => `<div class="muted"><span>${esc(k)}</span><span class="num">${money(v)}</span></div>`).join("")
       + `<div class="grand"><span>Total</span><span class="num">${money(total)}</span></div>` : "";
 }
  
+const people = i => Array.isArray(i.personAssignedTo) ? i.personAssignedTo.filter(Boolean) : (i.personAssignedTo ? [i.personAssignedTo] : []);
 const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
  
-function open(id) { rid = String(id); $("rid").value = rid; location.hash = rid; load(); }
+function open(id) { rid = String(id); location.hash = rid; $("list").hidden = true; load(); }
+
+async function showList() {
+  $("msg").textContent = "";
+  $("body").hidden = true;
+  rid = null; location.hash = "list";
+  let all;
+  try {
+    const res = await fetch("/api/receipts");
+    if (!res.ok) throw new Error(`GET /api/receipts failed (${res.status})`);
+    all = await res.json();
+  } catch (e) { $("msg").textContent = e.message; return; }
+  $("list").hidden = false;
+  $("list").innerHTML = `<h2 class="list-title">Existing receipts</h2>` + (all.length ? all.map(r => {
+    const items = r.lineItems || [];
+    const total = items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+    return `<button type="button" class="rcpt" data-id="${esc(r.id)}">
+      <span class="id">Receipt #${esc(r.id)}</span>
+      <span class="meta">${items.length} item${items.length === 1 ? "" : "s"}</span>
+      <span class="amt num">${money(total)}</span></button>`;
+  }).join("") : `<div class="empty">No receipts yet.<br>Choose New receipt to start one.</div>`);
+}
+
+$("listBtn").addEventListener("click", showList);
+$("list").addEventListener("click", e => {
+  const b = e.target.closest("button[data-id]");
+  if (b) open(b.dataset.id);
+});
  
-$("openForm").addEventListener("submit", e => { e.preventDefault(); open($("rid").value); });
  
 // New receipt: use the first number that has no items yet
 $("newBtn").addEventListener("click", async () => {
@@ -185,7 +239,7 @@ $("addForm").addEventListener("submit", e => {
       name: $("iname").value.trim(),
       quantity: Number($("iqty").value),
       unitPrice: Number($("iprice").value),
-      personAssignedTo: null
+      personAssignedTo: []
     });
     $("addForm").reset(); $("iqty").value = 1; $("iname").focus();
   });
@@ -200,7 +254,11 @@ $("items").addEventListener("click", e => {
   if (a === "del") act(() => api("DELETE", `/items/${id}`));
   if (a === "inc") act(() => api("PATCH", `/items/${id}`, { quantity: item.quantity + 1 }));
   if (a === "dec") act(() => api("PATCH", `/items/${id}`, { quantity: item.quantity - 1 }));
-  if (a === "unassign") act(() => api("DELETE", `/items/${id}/assignment`));
+  if (a === "unassign") {
+    const rest = people(item).filter(p => p !== btn.dataset.person);
+    act(() => rest.length ? api("PUT", `/items/${id}/assignment`, { personAssignedTo: rest })
+                          : api("DELETE", `/items/${id}/assignment`));
+  }
   if (a === "assign") assign(el, id);
 });
  
@@ -213,11 +271,13 @@ $("items").addEventListener("keydown", e => {
 function assign(el, id) {
   const person = el.querySelector(".assign input").value.trim();
   if (!person) return;
-  act(() => api("PUT", `/items/${id}/assignment`, { personAssignedTo: person }));
+  const current = people(receipt.lineItems.find(i => String(i.id) === id));
+  if (current.includes(person)) { el.querySelector(".assign input").value = ""; return; }
+  act(() => api("PUT", `/items/${id}/assignment`, { personAssignedTo: [...current, person] }));
 }
  
-if (location.hash.length > 1) { rid = location.hash.slice(1); $("rid").value = rid; load(); }
+if (location.hash === "#list") showList();
+else if (location.hash.length > 1) { rid = location.hash.slice(1); load(); }
 </script>
 </body>
 </html>
- 

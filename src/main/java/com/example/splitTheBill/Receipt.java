@@ -31,7 +31,7 @@ public class Receipt {
 		this.lineItems = lineItems;
 	}
 
-    public void assignLineItemToPerson(LineItem lineItem, String person) {
-        lineItem.setPersonAssignedTo(person);
+    public void assignLineItemToPerson(LineItem lineItem, List<String> people) {
+        lineItem.setPersonAssignedTo(people);
     }
 }

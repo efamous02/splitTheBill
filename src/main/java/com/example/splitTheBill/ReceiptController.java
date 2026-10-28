@@ -1,6 +1,8 @@
 package com.example.splitTheBill;
 
 import java.math.BigDecimal;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -22,6 +24,13 @@ import org.springframework.web.server.ResponseStatusException;
 public class ReceiptController {
 	private final Map<Long, Receipt> receipts = new ConcurrentHashMap<>();
 	private long nextItemId = 1;
+
+	@GetMapping
+	public synchronized List<Receipt> getReceipts() {
+		return receipts.values().stream()
+				.sorted(Comparator.comparingLong(Receipt::getId))
+				.toList();
+	}
 
 	@GetMapping("/{receiptId}")
 	public synchronized Receipt getReceipt(@PathVariable long receiptId) {
@@ -113,6 +122,6 @@ public class ReceiptController {
 	public record LineItemPatch(String name, Integer quantity, BigDecimal unitPrice) {
 	}
 
-	public record AssignmentRequest(String personAssignedTo) {
+	public record AssignmentRequest(List<String> personAssignedTo) {
 	}
 }

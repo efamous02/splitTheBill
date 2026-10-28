@@ -1,13 +1,15 @@
 package com.example.splitTheBill;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 public class LineItem {
     private long id;
 	private String name;
 	private int quantity;
 	private BigDecimal unitPrice;
-    private String personAssignedTo;
+    private List<String> personAssignedTo = new ArrayList<>();
 
 	public LineItem() {
 	}
@@ -19,11 +21,11 @@ public class LineItem {
         this.id = -1; // id will be set when the LineItem is saved to the database
     }
 
-	public LineItem(String name, int quantity, BigDecimal unitPrice, String personAssignedTo) {
+	public LineItem(String name, int quantity, BigDecimal unitPrice, List<String> personAssignedTo) {
 		this.name = name;
 		this.quantity = quantity;
 		this.unitPrice = unitPrice;
-		this.personAssignedTo = personAssignedTo;
+		this.setPersonAssignedTo(personAssignedTo);
 		this.id = -1; // id will be set when the LineItem is saved to the database
 	}
 
@@ -39,7 +41,7 @@ public class LineItem {
 		return quantity;
 	}
 
-    public String getPersonAssignedTo() {
+    public List<String> getPersonAssignedTo() {
         return personAssignedTo;
     }
 
@@ -55,8 +57,12 @@ public class LineItem {
 		this.unitPrice = unitPrice;
 	}
 
-    public void setPersonAssignedTo(String personAssignedTo) {
-        this.personAssignedTo = personAssignedTo;
+    public void setPersonAssignedTo(List<String> personAssignedTo) {
+        this.personAssignedTo = personAssignedTo == null ? new ArrayList<>() : personAssignedTo.stream()
+                .filter(person -> person != null && !person.isBlank())
+                .map(String::trim)
+                .distinct()
+                .toList();
     }
 
     public Long getId() {

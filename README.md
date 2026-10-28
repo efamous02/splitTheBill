@@ -2,7 +2,7 @@
 
 A small Spring Boot API for splitting a bill among friends.
 
-The application stores receipts and line items in memory. A receipt contains one or more line items, and each line item can be assigned to a person.
+The application stores receipts and line items in memory. A receipt contains one or more line items, and each line item can be assigned to one or more people. Its total cost is split evenly among those people.
 
 This README was generated using AI
 
@@ -12,7 +12,7 @@ This README was generated using AI
 - Add line items
 - Update line item details
 - Remove line items
-- Assign a line item to a person
+- Assign a line item to one or more people
 - Remove an assignment
 
 ## Running the application
@@ -31,6 +31,7 @@ http://localhost:8080
 
 | Method | Endpoint | Purpose |
 |---|---|---|
+| `GET` | `/api/receipts` | List all receipts |
 | `GET` | `/api/receipts/{receiptId}` | View a receipt |
 | `POST` | `/api/receipts/{receiptId}/items` | Add an item |
 | `PATCH` | `/api/receipts/{receiptId}/items/{itemId}` | Update an item |
@@ -52,6 +53,14 @@ curl -X POST http://localhost:8080/api/receipts/1/items \
 
 A receipt is created automatically if it does not already exist.
 
+## List receipts
+
+```bash
+curl http://localhost:8080/api/receipts
+```
+
+Returns an array of all receipts currently stored in memory, ordered by receipt ID.
+
 ## View a receipt
 
 ```bash
@@ -69,7 +78,7 @@ Example response:
       "name": "Pizza",
       "quantity": 1,
       "unitPrice": 18.99,
-      "personAssignedTo": null
+      "personAssignedTo": []
     }
   ]
 }
@@ -91,9 +100,11 @@ curl -X PATCH http://localhost:8080/api/receipts/1/items/1 \
 curl -X PUT http://localhost:8080/api/receipts/1/items/1/assignment \
   -H "Content-Type: application/json" \
   -d '{
-    "personAssignedTo": "Alice"
+    "personAssignedTo": ["Alice", "Bob"]
   }'
 ```
+
+The assignment `PUT` replaces the item's assigned people. In the UI, assigning another person adds them without removing existing assignees; each person's totals include an equal share of the item's total, with any remaining cents distributed across the first assignees.
 
 ## Remove an assignment
 
